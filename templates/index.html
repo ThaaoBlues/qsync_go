@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=s, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h2>Register a new sync task :</h2>
+
+    <form action="/register">
+        <input name="remote_addr" type="text" placeholder="remote machine address">
+        <input type="text" name="full_path" placeholder="folder full path (this machine)">
+        <input type="submit">
+    </form>
+
+    <h2>Connect to a sync task :</h2>
+
+    <form action="/connect">
+        <input name="remote_addr" type="text" placeholder="remote machine address">
+        <input type="text" name="sync_root" placeholder="folder full path (this machine)">
+        <input type="text" name="sync_id" placeholder="sync id" autocomplete="off">
+        <input type="submit">
+    </form>
+
+    <p>The end folder should be empty as all the files and folders available at the other end will be copied.</p>
+
+    <h2>Current sync tasks :</h2>
+    <br>
+
+    <table>
+        <tr>
+            <td>sync_id</td> 
+            <td>root directory</td> 
+            <td>remote address</td> 
+            <td>is a local-to-local second end</td> 
+        </tr>
+        {{range .}}
+            <tr>
+                <td><button onclick="copy('{{.Sync_id}}')">Copy sync_id</button></td> 
+                <td>{{.Sync_root}}</td> 
+                <td>{{.Remote_addr}}</td> 
+                <td>{{.Is_local_second_end}}</td> 
+            </tr> 
+        {{end}}
+    </table>
+
+
+    <script>
+        function copy(text) {
+            /* Copy the text inside the text argument */
+            navigator.clipboard.writeText(text);
+          
+            /* Alert the copied text */
+            //alert("Copied sync_id : " + text);
+          }
+    </script>
+
+    <style>
+        table, th,td{
+            border:1px solid black;
+        }
+    </style>
+
+</body>
+</html>
