@@ -11,4 +11,4 @@
 
 ### How it works ?
 
-    - to lazy to explain today.
+    - too lazy to explain today.
