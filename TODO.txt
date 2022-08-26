@@ -1,5 +1,4 @@
 BUGS :
-- files are deleted inside a folder that has been renamed as intended but not recreated
 
 IMPROVEMENTS :
 - better web gui

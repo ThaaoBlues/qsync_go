@@ -399,8 +399,8 @@ func map_directory(directory string, sync_id string,sync_root string) {
 	for _, e := range entries {
 		full_path := directory + "/" + e.Name()
 		if e.IsDir() {
-			map_directory(full_path, sync_id,sync_root)
 			register_folder(full_path, e, sync_id,sync_root)
+			map_directory(full_path, sync_id,sync_root)
 		} else {
 			register_file(full_path, e, sync_id,sync_root)
 		}
@@ -807,12 +807,14 @@ func main() {
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 		full_path := get_sync_root(sync_id,is_local_second_end) + r.URL.Query().Get("relative_path")
 
+		println("[+] Downloading file upload : "+full_path+"\n\trelative path : "+r.URL.Query().Get("relative_path"))
+
 		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		//Access the photo key - First Approach
+
 		file, _, err := r.FormFile("file")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
