@@ -43,7 +43,7 @@
                 <td>{{.Sync_root}}</td> 
                 <td>{{.Remote_addr}}</td> 
                 <td>{{.Is_local_second_end}}</td> 
-                <td>{{.Is_task_paused}} <button onclick="change_task_state('{{.Sync_id}}','{{.Is_local_second_end}}')">start/stop task</button></td>
+                <td>{{.Is_task_paused}} <button onclick="change_task_state('{{.Sync_id}}','{{.Is_local_second_end}}','{{.Remote_addr}}')">start/stop task</button></td>
             </tr> 
         {{end}}
     </table>
@@ -58,11 +58,19 @@
             //alert("Copied sync_id : " + text);
         }
 
-        function change_task_state(sync_id,is_local_second_end){
+        function change_task_state(sync_id,is_local_second_end,remote_addr){
 
             x = new XMLHttpRequest();
-            x.open("GET","http://localhost/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
-            x.send();
+            if(is_local_second_end == "true"){
+                x.open("GET","http://localhost/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+                x.send();
+            }else{
+                x.open("GET","http://localhost/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+                x.send();
+                x.open("GET","http://"+remote_addr+"/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+                x.send();
+            }
+
             setTimeout(reload,1000); 
             
         }
