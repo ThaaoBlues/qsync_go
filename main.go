@@ -459,13 +459,6 @@ func delete_file_from_db(sync_id string, relative_path string) {
 		return
 	}
 
-	//file is already being written
-	if len(bdd_string_split) <= 1{
-		time.Sleep(1*time.Second)
-		delete_file_from_db(sync_id, relative_path)
-		return
-	}
-
 	new_bdd_content = bdd_string_split[0]
 	for _, ele := range bdd_string_split[1:] {
 
