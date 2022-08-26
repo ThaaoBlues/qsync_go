@@ -44,8 +44,8 @@
                 <td>{{.Sync_root}}</td> 
                 <td>{{.Remote_addr}}</td> 
                 <td>{{.Is_local_second_end}}</td> 
-                <td>{{.Is_task_paused}} <button onclick="change_task_state('{{.Sync_id}}','{{.Is_local_second_end}}','{{.Remote_addr}}')">start/stop task</button></td>
-                <td><button onclick="delete_sync_task('{{.Sync_id}}','{{.Is_local_second_end}}','{{.Remote_addr}}')">delete task</button></td>
+                <td>{{.Is_task_paused}} <button onclick="change_task_state('{{.Sync_id}}','{{.Is_local_second_end}}','{{.Remote_addr}}',false)">start/stop task</button></td>
+                <td><button onclick="delete_sync_task('{{.Sync_id}}','{{.Is_local_second_end}}','{{.Remote_addr}}','{{.Is_task_paused}}')">delete task</button></td>
             </tr> 
         {{end}}
     </table>
@@ -60,7 +60,7 @@
             //alert("Copied sync_id : " + text);
         }
 
-        function change_task_state(sync_id,is_local_second_end,remote_addr){
+        function change_task_state(sync_id,is_local_second_end,remote_addr,is_from_delete){
 
             x = new XMLHttpRequest();
             if(is_local_second_end == "true"){
@@ -73,12 +73,21 @@
                 x.send();
             }
 
-            setTimeout(reload,1000); 
+            if(!is_from_delete){
+                setTimeout(reload,1000);
+            }
             
         }
         
-        function delete_sync_task(sync_id,is_local_second_end,remote_addr){
+        function delete_sync_task(sync_id,is_local_second_end,remote_addr,Is_task_paused){
 
+            //before all, pause task
+            if (Is_task_paused != "true"){
+                change_task_state(sync_id,is_local_second_end,remote_addr,true);
+            }
+            
+            
+            // now delete database files
             x = new XMLHttpRequest();
             if(is_local_second_end == "true"){
                 x.open("GET","http://localhost/delete_sync_task?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);

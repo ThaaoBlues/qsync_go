@@ -588,8 +588,6 @@ func update_at_creation(sync_id string, ip_addr string,sync_root string) {
 			files_db_ctt, _ := io.ReadAll(files_resp.Body)
 			os.WriteFile(sync_id+"_files.csv", files_db_ctt, 0644)
 
-			db_ctt, _ := os.ReadFile(sync_id+"_files.csv")
-
 			println("\t\t[+] Downloaded other end files database")
 
 			// getting folders db
@@ -1012,6 +1010,7 @@ func main() {
 			println("[+] Changing local sync task state")
 			change_task_state(sync_id,!is_local_second_end)
 		}
+		println("[+] Changing sync task state")
 		change_task_state(sync_id,is_local_second_end)
 
 	})
@@ -1025,6 +1024,7 @@ func main() {
 			println("[+] Deleting local sync task")
 			delete_sync_task(sync_id,!is_local_second_end)
 		}
+		println("[+] Deleting sync task")
 		delete_sync_task(sync_id,is_local_second_end)
 	})
 
