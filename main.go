@@ -733,6 +733,13 @@ func main() {
 
 	http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
 
+		// accept only local requests on this endpoint
+		if strings.Contains(r.RemoteAddr, ".") {
+			w.WriteHeader(403)
+			http.Error(w,"Access forbidden to this url :/",403)
+			return
+		}
+
 		sync_id := r.URL.Query().Get("sync_id")
 		sync_root := r.URL.Query().Get("sync_root")
 
@@ -890,6 +897,15 @@ func main() {
 	})
 
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+
+
+		// accept only local requests on this endpoint
+		if strings.Contains(r.RemoteAddr, ".") {
+			w.WriteHeader(403)
+			http.Error(w,"Access forbidden to this url :/",403)
+			return
+		}
+
 		full_path := r.URL.Query().Get("full_path")
 		remote_addr := r.URL.Query().Get("remote_addr")
 
