@@ -589,7 +589,6 @@ func update_at_creation(sync_id string, ip_addr string,sync_root string) {
 			os.WriteFile(sync_id+"_files.csv", files_db_ctt, 0644)
 
 			db_ctt, _ := os.ReadFile(sync_id+"_files.csv")
-			println("files.csv content : "+string(db_ctt))
 
 			println("\t\t[+] Downloaded other end files database")
 
