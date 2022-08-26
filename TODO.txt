@@ -1,7 +1,6 @@
 TODO :
     - better web gui
-    - other features like ssl/tls and delete sync task
-    
+    - other features like ssl/tls
 
 WIP :
-
+    - tests on a remote context ( by design it is exactly the same as local-to-local but just in case)

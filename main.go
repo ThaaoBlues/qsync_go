@@ -721,6 +721,31 @@ func change_task_state(sync_id string,is_local_second_end bool){
 	os.WriteFile("sync_db.csv",[]byte(new_bdd_content),0644)
 }
 
+func delete_sync_task(sync_id string,is_local_second_end bool){
+
+	bdd_content, _ := os.ReadFile("sync_db.csv")
+	bdd_content_split := strings.Split(string(bdd_content), "\n")
+
+
+	var new_bdd_content = bdd_content_split[0]
+	for _, ele := range bdd_content_split[1:] {
+		ele_split := strings.Split(ele, ";")
+		// all except the right task
+		if !((ele_split[0] == sync_id) && (ele_split[3] == strconv.FormatBool(is_local_second_end))) {
+			new_bdd_content += "\n"+ele
+		}
+
+		
+	}
+
+	os.WriteFile("sync_db.csv",[]byte(new_bdd_content),0644)
+
+	os.Remove(sync_id+"_files.csv")
+	os.Remove(sync_id+"_folders.csv")
+
+}
+
+
 /*
 =========================================
 WEB SERVER
@@ -990,6 +1015,18 @@ func main() {
 		}
 		change_task_state(sync_id,is_local_second_end)
 
+	})
+
+
+	http.HandleFunc("/delete_sync_task", func(w http.ResponseWriter, r *http.Request){
+		sync_id := r.URL.Query().Get("sync_id")
+		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
+
+		if is_sync_local(sync_id){
+			println("[+] Deleting local sync task")
+			delete_sync_task(sync_id,!is_local_second_end)
+		}
+		delete_sync_task(sync_id,is_local_second_end)
 	})
 
 
