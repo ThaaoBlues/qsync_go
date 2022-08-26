@@ -1,5 +1,7 @@
-BUGS :
+TODO :
+    - better web gui
+    - other features like ssl/tls and delete sync task
+    
 
-IMPROVEMENTS :
-- better web gui
-- other features like ssl/tls, pause/resume sync task and delete sync task
+WIP :
+

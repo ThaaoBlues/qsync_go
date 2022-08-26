@@ -32,9 +32,10 @@
     <table>
         <tr>
             <td>sync_id</td> 
-            <td>root directory</td> 
+            <td>root directory</td>
             <td>remote address</td> 
-            <td>is a local-to-local second end</td> 
+            <td>is a local-to-local second end</td>
+            <td>paused</td> 
         </tr>
         {{range .}}
             <tr>
@@ -42,6 +43,7 @@
                 <td>{{.Sync_root}}</td> 
                 <td>{{.Remote_addr}}</td> 
                 <td>{{.Is_local_second_end}}</td> 
+                <td>{{.Is_task_paused}} <button onclick="change_task_state('{{.Sync_id}}','{{.Is_local_second_end}}')">start/stop task</button></td>
             </tr> 
         {{end}}
     </table>
@@ -54,7 +56,19 @@
           
             /* Alert the copied text */
             //alert("Copied sync_id : " + text);
-          }
+        }
+
+        function change_task_state(sync_id,is_local_second_end){
+
+            x = new XMLHttpRequest();
+            x.open("GET","http://localhost/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+            x.send();
+            setTimeout(reload,1000); 
+            
+        }
+        function reload(){
+            document.location.reload(true);
+        }
     </script>
 
     <style>

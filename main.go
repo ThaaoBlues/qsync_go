@@ -139,7 +139,7 @@ func init_db(sync_root string, sync_id string, remote_addr string) {
 	for _, dir := range dirs {
 		if dir.Name() == "sync_db.csv" {
 			db_ctt, _ := os.ReadFile("sync_db.csv")
-			os.WriteFile("sync_db.csv", []byte(string(db_ctt)+"\n"+sync_id+";"+sync_root+";"+remote_addr+";"+strconv.FormatBool(is_local_second_end)), 0644)
+			os.WriteFile("sync_db.csv", []byte(string(db_ctt)+"\n"+sync_id+";"+sync_root+";"+remote_addr+";"+strconv.FormatBool(is_local_second_end)+";"+"false"), 0644)
 			found = true
 			break
 		}
@@ -148,9 +148,9 @@ func init_db(sync_root string, sync_id string, remote_addr string) {
 
 	// database is not created ?
 	if !found {
-		os.WriteFile("sync_db.csv", []byte("sync_id;sync_root;remote_addr;is_local_second_end"), 0644)
+		os.WriteFile("sync_db.csv", []byte("sync_id;sync_root;remote_addr;is_local_second_end;is_task_paused"), 0644)
 		db_ctt, _ := os.ReadFile("sync_db.csv")
-		os.WriteFile("sync_db.csv", []byte(string(db_ctt)+"\n"+sync_id+";"+sync_root+";"+remote_addr+";"+strconv.FormatBool(is_local_second_end)), 0644)
+		os.WriteFile("sync_db.csv", []byte(string(db_ctt)+"\n"+sync_id+";"+sync_root+";"+remote_addr+";"+strconv.FormatBool(is_local_second_end)+";"+"false"), 0644)
 	}
 
 }
@@ -546,6 +546,9 @@ func notify_file_deletion(sync_id string, ip_addr string,relative_path string,sy
 }
 
 func restart_tasks() {
+	//wait http server ^to start
+	time.Sleep(2*time.Second)
+
 	db_ctt, _ := os.ReadFile("sync_db.csv")
 	db_ctt_list := strings.Split(string(db_ctt), "\n")
 	for _, ele := range db_ctt_list[1:] {
@@ -659,14 +662,63 @@ Sync process is the function started as a coroutine that will loop map_directory
 func sync_process(sync_id string, directory string) {
 
 	for true {
+
+		// check if sync task is still valid (has not been deleted)
+		if !(is_id_valid(sync_id)){
+			return
+		}
+
+
+		// execute mapping if task is not paused
+		if !(is_task_paused(sync_id,directory)){
+			map_directory(directory, sync_id,directory)
+			check_files_deletion(directory,sync_id)
+		}
+
 		// slow down the loop and keep unsynchronised sync tasks at the same time
 		// to avoid misswrite and new folder deletion
 		time.Sleep(5*time.Second)
 
-
-		map_directory(directory, sync_id,directory)
-		check_files_deletion(directory,sync_id)
 	}
+}
+
+func is_task_paused(sync_id string,sync_root string) bool{
+	bdd_content, _ := os.ReadFile("sync_db.csv")
+	bdd_content_split := strings.Split(string(bdd_content), "\n")
+
+	for _, ele := range bdd_content_split {
+		ele_split := strings.Split(ele, ";")
+		// find the right sync task
+		if (ele_split[0] == sync_id) && (ele_split[1] == sync_root) {
+			return ele_split[4] == "true"
+		}
+	}
+
+	// id not valid
+	return false
+}
+
+func change_task_state(sync_id string,is_local_second_end bool){
+	bdd_content, _ := os.ReadFile("sync_db.csv")
+	bdd_content_split := strings.Split(string(bdd_content), "\n")
+
+
+	var new_bdd_content = bdd_content_split[0]
+	for _, ele := range bdd_content_split[1:] {
+		ele_split := strings.Split(ele, ";")
+		// find the right sync task
+		if (ele_split[0] == sync_id) && (ele_split[3] == strconv.FormatBool(is_local_second_end)) {
+			new_bdd_content += "\n"+ele_split[0]+";"+ele_split[1]+";"+ele_split[2]+";"+ele_split[3]+";"+strconv.FormatBool(!(ele_split[4]=="true"))
+			
+		}else{
+			// not the line we want to modify, reput it as it was
+			new_bdd_content += "\n"+ele
+		}
+
+		
+	}
+
+	os.WriteFile("sync_db.csv",[]byte(new_bdd_content),0644)
 }
 
 /*
@@ -680,6 +732,7 @@ type sync_task struct{
 	Sync_root string
 	Remote_addr string
 	Is_local_second_end string
+	Is_task_paused string
 }
 
 func main() {
@@ -701,7 +754,7 @@ func main() {
 
 	// database is not created ?
 	if !found {
-		os.WriteFile("sync_db.csv", []byte("sync_id;sync_root;remote_addr;is_local_second_end"), 0644)
+		os.WriteFile("sync_db.csv", []byte("sync_id;sync_root;remote_addr;is_local_second_end;is_task_paused"), 0644)
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -723,7 +776,7 @@ func main() {
 
 		for _, ele := range db_ctt_list[1:] {
 			ele_split := strings.Split(ele, ";")
-			db = append(db,sync_task{Sync_id : ele_split[0], Sync_root : ele_split[1],Remote_addr : ele_split[2], Is_local_second_end : ele_split[3]})
+			db = append(db,sync_task{Sync_id : ele_split[0], Sync_root : ele_split[1],Remote_addr : ele_split[2], Is_local_second_end : ele_split[3], Is_task_paused : ele_split[4]})
 		}
 		
 
@@ -748,7 +801,7 @@ func main() {
 		if (remote_addr == "localhost") || (remote_addr == "127.0.0.1") {
 			//adding sync_id into the database
 			db_ctt, _ := os.ReadFile("sync_db.csv")
-			os.WriteFile("sync_db.csv", []byte(string(db_ctt)+"\n"+sync_id+";"+sync_root+";"+remote_addr+";"+"true"), 0644)
+			os.WriteFile("sync_db.csv", []byte(string(db_ctt)+"\n"+sync_id+";"+sync_root+";"+remote_addr+";"+"true"+";"+"false"), 0644)
 		} else {
 			init_db(sync_root, sync_id, remote_addr)
 		}
@@ -927,9 +980,22 @@ func main() {
 	})
 
 
+	http.HandleFunc("/change_task_state", func(w http.ResponseWriter, r *http.Request) {
+		sync_id := r.URL.Query().Get("sync_id")
+		is_local_second_end := (r.URL.Query().Get("is_local_second_end")== "true")
+
+		if is_sync_local(sync_id){
+			println("[+] Changing local sync task state")
+			change_task_state(sync_id,!is_local_second_end)
+		}
+		change_task_state(sync_id,is_local_second_end)
+
+	})
+
+
 	println("[+] Restarting all tasks...")
 
-	restart_tasks()
+	go restart_tasks()
 
 	println("[+] Starting server on http://localhost")
 
