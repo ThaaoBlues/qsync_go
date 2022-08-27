@@ -4,4 +4,3 @@ TODO :
 
 WIP :
     - tests on a remote context ( by design it is exactly the same as local-to-local but just in case)
-    - fixing tasks deletion

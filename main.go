@@ -728,7 +728,6 @@ func delete_sync_task(sync_id string,is_local_second_end bool){
 
 		
 	}
-
 	os.WriteFile("sync_db.csv",[]byte(new_bdd_content),0644)
 
 	os.Remove(sync_id+"_files.csv")
@@ -1014,6 +1013,11 @@ func main() {
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 
+		//wait that sync tasks are paused
+		println("[+] Waiting end of current loop...")
+		time.Sleep(5*time.Second)
+
+		// delete them
 		if is_sync_local(sync_id){
 			println("[+] Deleting local sync task second end")
 			delete_sync_task(sync_id,!is_local_second_end)
