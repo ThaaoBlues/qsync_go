@@ -657,6 +657,16 @@ func get_sync_root(sync_id string,is_local_second_end bool) string {
 	return ""
 }
 
+
+func is_other_end_available(sync_id string) bool{
+	client := http.Client{
+		Timeout: time.Second / 10,
+	}
+	r, err := client.Get("http://" + get_remote_addr(sync_id))
+
+	return err != nil
+}
+
 /*
 Sync process is the function started as a coroutine that will loop map_directory() indefinitely
 */
@@ -670,8 +680,16 @@ func sync_process(sync_id string, directory string) {
 		}
 
 
+
+
 		// execute mapping if task is not paused
 		if !(is_task_paused(sync_id,directory)){
+
+
+			if !is_other_end_available(sync_id){
+				change_task_state(sync_id,false)
+			}
+
 			map_directory(directory, sync_id,directory)
 			check_files_deletion(directory,sync_id)
 		}
