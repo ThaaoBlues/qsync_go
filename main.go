@@ -139,6 +139,11 @@ func init_db(sync_root string, sync_id string, remote_addr string) {
 	for _, dir := range dirs {
 		if dir.Name() == "sync_db.csv" {
 			db_ctt, _ := os.ReadFile("sync_db.csv")
+
+			if !(strings.Contains(remote_addr,":")){
+				remote_addr += ":9214"
+			}
+
 			os.WriteFile("sync_db.csv", []byte(string(db_ctt)+"\n"+sync_id+";"+sync_root+";"+remote_addr+";"+strconv.FormatBool(is_local_second_end)+";"+"false"), 0644)
 			found = true
 			break
@@ -583,6 +588,12 @@ func update_at_creation(sync_id string, ip_addr string,sync_root string) {
 
 			println("\t\t[+] Downloaded other end files database")
 
+			
+			
+			if !(strings.Contains(":",ip_addr)){
+				ip_addr += ":9214"
+			}
+
 			// getting folders db
 
 			folders_resp, err := http.Get("http://" + ip_addr + "/sync_db/folders?sync_id=" + sync_id)
@@ -821,6 +832,11 @@ func main() {
 			init_db(sync_root, sync_id, remote_addr)
 		}
 
+
+		if !(strings.Contains(remote_addr,":")){
+			remote_addr += ":9214"
+		}
+
 		// init sync database for this task and download files from the other end
 		update_at_creation(sync_id, remote_addr,sync_root)
 
@@ -909,6 +925,11 @@ func main() {
 			ip_addr = r.RemoteAddr
 		}
 
+		if !(strings.Contains(":",ip_addr)){
+			ip_addr += ":9214"
+		}
+
+
 		client := http.Client{
 			Timeout: time.Second / 10,
 		}
@@ -983,6 +1004,10 @@ func main() {
 			http.Error(w,"Empty form arguments, <a href='/'>Home</a>",404)
 		}
 
+		if !(strings.Contains(remote_addr,":")){
+			remote_addr += ":9214"
+		}
+
 		// init sync database for this task
 		sync_id := gen_sync_id()
 		init_db(full_path, sync_id, remote_addr)
@@ -1031,8 +1056,8 @@ func main() {
 
 	go restart_tasks()
 
-	println("[+] Starting server on http://localhost")
+	println("[+] Starting server on http://localhost:9214")
 
-	http.ListenAndServe(":80", nil)
+	http.ListenAndServe(":9214", nil)
 
 }
