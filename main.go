@@ -662,9 +662,9 @@ func is_other_end_available(sync_id string) bool{
 	client := http.Client{
 		Timeout: time.Second / 10,
 	}
-	r, err := client.Get("http://" + get_remote_addr(sync_id))
+	_, err := client.Get("http://" + get_remote_addr(sync_id))
 
-	return err != nil
+	return err == nil
 }
 
 /*
