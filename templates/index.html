@@ -63,7 +63,7 @@
         function change_task_state(sync_id,is_local_second_end,remote_addr,is_from_delete){
 
             x = new XMLHttpRequest();
-            if(is_local_second_end == "true"){
+            if(remote_addr == "localhost"){
                 x.open("GET","http://localhost/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
                 x.send();
             }else{
@@ -89,7 +89,7 @@
             
             // now delete database files
             x = new XMLHttpRequest();
-            if(is_local_second_end == "true"){
+            if(remote_addr == "localhost"){
                 x.open("GET","http://localhost/delete_sync_task?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
                 x.send();
             }else{

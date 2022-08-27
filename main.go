@@ -717,12 +717,13 @@ func delete_sync_task(sync_id string,is_local_second_end bool){
 	bdd_content_split := strings.Split(string(bdd_content), "\n")
 
 
-	var new_bdd_content = bdd_content_split[0]
+	new_bdd_content := bdd_content_split[0]
+
 	for _, ele := range bdd_content_split[1:] {
 		ele_split := strings.Split(ele, ";")
 		// all except the right task
 		if !((ele_split[0] == sync_id) && (ele_split[3] == strconv.FormatBool(is_local_second_end))) {
-			new_bdd_content += "\n"+ele
+			new_bdd_content = new_bdd_content + "\n"+ele
 		}
 
 		
@@ -1000,7 +1001,7 @@ func main() {
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end")== "true")
 
 		if is_sync_local(sync_id){
-			println("[+] Changing local sync task state")
+			println("[+] Changing sync task state of local second end")
 			change_task_state(sync_id,!is_local_second_end)
 		}
 		println("[+] Changing sync task state")
@@ -1014,7 +1015,7 @@ func main() {
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 
 		if is_sync_local(sync_id){
-			println("[+] Deleting local sync task")
+			println("[+] Deleting local sync task second end")
 			delete_sync_task(sync_id,!is_local_second_end)
 		}
 		println("[+] Deleting sync task")
