@@ -11,10 +11,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
-	"strconv"
 )
 
 /*
@@ -67,17 +67,17 @@ func sendPostRequest(url string, full_path string, sync_id string) {
 	file.Close()
 }
 
-func upload_file(full_path string, ip_addr string, sync_id string,sync_root string) {
-	relative_path := strings.Replace(full_path,sync_root,"",1)
+func upload_file(full_path string, ip_addr string, sync_id string, sync_root string) {
+	relative_path := strings.Replace(full_path, sync_root, "", 1)
 
-	is_local_second_end := is_local_second_end(sync_id,sync_root)
+	is_local_second_end := is_local_second_end(sync_id, sync_root)
 
-	if is_sync_local(sync_id){
+	if is_sync_local(sync_id) {
 		// to notify folder creation on the other local end and not on the same
 		is_local_second_end = !is_local_second_end
 	}
 
-	url := "http://" + ip_addr + "/sync_upload?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id +"&is_local_second_end="+strconv.FormatBool(is_local_second_end)
+	url := "http://" + ip_addr + "/sync_upload?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id + "&is_local_second_end=" + strconv.FormatBool(is_local_second_end)
 	sendPostRequest(url, full_path, sync_id)
 
 }
@@ -117,7 +117,6 @@ func init_db(sync_root string, sync_id string, remote_addr string) {
 	os.WriteFile(sync_id+"_files.csv", []byte("id;relative_path;m_date"), 0644)
 	os.WriteFile(sync_id+"_folders.csv", []byte("id;relative_path"), 0644)
 
-
 	is_local_second_end := false
 	bdd_content, _ := os.ReadFile("sync_db.csv")
 	bdd_content_split := strings.Split(string(bdd_content), "\n")
@@ -125,12 +124,10 @@ func init_db(sync_root string, sync_id string, remote_addr string) {
 	for _, ele := range bdd_content_split {
 
 		// already the first end in local database, so mark the new end as local_second_end
-		if (strings.Split(ele, ";")[0] == sync_id){
+		if strings.Split(ele, ";")[0] == sync_id {
 			is_local_second_end = true
 		}
 	}
-
-	
 
 	dirs, _ := os.ReadDir(".")
 
@@ -140,7 +137,7 @@ func init_db(sync_root string, sync_id string, remote_addr string) {
 		if dir.Name() == "sync_db.csv" {
 			db_ctt, _ := os.ReadFile("sync_db.csv")
 
-			if !(strings.Contains(remote_addr,":")){
+			if !(strings.Contains(remote_addr, ":")) {
 				remote_addr += ":9214"
 			}
 
@@ -192,8 +189,7 @@ func is_id_valid(sync_id string) bool {
 	return false
 }
 
-
-func is_local_second_end(sync_id string, sync_root string) bool{
+func is_local_second_end(sync_id string, sync_root string) bool {
 	bdd_content, _ := os.ReadFile("sync_db.csv")
 	bdd_content_split := strings.Split(string(bdd_content), "\n")
 
@@ -201,7 +197,7 @@ func is_local_second_end(sync_id string, sync_root string) bool{
 
 		ele_split := strings.Split(ele, ";")
 		// test if we are on the right sync_id by comparing path as this is the only thing changing
-		if (ele_split[0] == sync_id) && (strings.Contains(sync_root,ele_split[1])) && (strings.Contains("true",ele_split[3])){
+		if (ele_split[0] == sync_id) && (strings.Contains(sync_root, ele_split[1])) && (strings.Contains("true", ele_split[3])) {
 			return true
 		}
 	}
@@ -210,7 +206,7 @@ func is_local_second_end(sync_id string, sync_root string) bool{
 
 }
 
-func is_sync_local(sync_id string) bool{
+func is_sync_local(sync_id string) bool {
 	bdd_content, _ := os.ReadFile("sync_db.csv")
 	bdd_content_split := strings.Split(string(bdd_content), "\n")
 
@@ -218,7 +214,7 @@ func is_sync_local(sync_id string) bool{
 	for _, ele := range bdd_content_split {
 
 		// test if we are on the right sync_id by comparing path as this is the only thing changing
-		if (strings.Split(ele, ";")[0] == sync_id){
+		if strings.Split(ele, ";")[0] == sync_id {
 			c += 1
 		}
 	}
@@ -230,13 +226,11 @@ func is_sync_local(sync_id string) bool{
 
 function called in map_directory at each file encountered
 */
-func register_file(full_path string, e os.DirEntry, sync_id string,sync_root string) {
+func register_file(full_path string, e os.DirEntry, sync_id string, sync_root string) {
 
+	if needs_update(full_path, e, sync_id, sync_root) {
 
-
-	if needs_update(full_path, e, sync_id,sync_root) {
-
-		relative_path := strings.Replace(full_path,sync_root,"",1)
+		relative_path := strings.Replace(full_path, sync_root, "", 1)
 
 		info, _ := e.Info()
 		modtime := info.ModTime().Format(time.RFC1123)
@@ -261,18 +255,18 @@ func register_file(full_path string, e os.DirEntry, sync_id string,sync_root str
 				}
 
 			}
-			Println("[+] Modifying file : "+relative_path+" in database")
+			Println("[+] Modifying file : " + relative_path + " in database")
 			// write database with modified line
 			os.WriteFile(sync_id+"_files.csv", []byte(new_bdd_content), os.ModeAppend)
 		} else {
-			Println("[+] Adding file : "+relative_path+" to database")
+			Println("[+] Adding file : " + relative_path + " to database")
 			//update database by adding the whole line
 			os.WriteFile(sync_id+"_files.csv", []byte(string(bdd_content)+"\n0;"+relative_path+";"+modtime), os.ModeAppend)
 
 		}
 
 		//notify update to remote and send file
-		upload_file(full_path, get_remote_addr(sync_id), sync_id,sync_root)
+		upload_file(full_path, get_remote_addr(sync_id), sync_id, sync_root)
 
 	}
 }
@@ -280,11 +274,11 @@ func register_file(full_path string, e os.DirEntry, sync_id string,sync_root str
 /*
 function called in map_directory at each folder encountered
 */
-func register_folder(full_path string, e os.DirEntry, sync_id string,sync_root string) {
+func register_folder(full_path string, e os.DirEntry, sync_id string, sync_root string) {
 
-	if needs_update(full_path, e, sync_id,sync_root) {
+	if needs_update(full_path, e, sync_id, sync_root) {
 
-		relative_path := strings.Replace(full_path,sync_root,"",1)
+		relative_path := strings.Replace(full_path, sync_root, "", 1)
 		Println("Updating folders database with : " + relative_path)
 
 		//notify update to remote
@@ -292,15 +286,15 @@ func register_folder(full_path string, e os.DirEntry, sync_id string,sync_root s
 			Timeout: time.Second / 10,
 		}
 
-		is_local_second_end := is_local_second_end(sync_id,sync_root)
+		is_local_second_end := is_local_second_end(sync_id, sync_root)
 
-		if is_sync_local(sync_id){
+		if is_sync_local(sync_id) {
 			// to notify folder creation on the other local end and not on the same
 			is_local_second_end = !is_local_second_end
 		}
 
-		client.Get("http://" + get_remote_addr(sync_id) + "/create_folder?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id+"&is_local_second_end="+strconv.FormatBool(is_local_second_end))
-		
+		client.Get("http://" + get_remote_addr(sync_id) + "/create_folder?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id + "&is_local_second_end=" + strconv.FormatBool(is_local_second_end))
+
 		//update database
 		bdd_content, _ := os.ReadFile(sync_id + "_folders.csv")
 		os.WriteFile(sync_id+"_folders.csv", []byte(string(bdd_content)+"\n0;"+relative_path), os.ModeAppend)
@@ -308,16 +302,15 @@ func register_folder(full_path string, e os.DirEntry, sync_id string,sync_root s
 	}
 }
 
-func needs_update(full_path string, e os.DirEntry, sync_id string,sync_root string) bool {
+func needs_update(full_path string, e os.DirEntry, sync_id string, sync_root string) bool {
 
-
-	relative_path := strings.Replace(full_path,sync_root,"",1)
+	relative_path := strings.Replace(full_path, sync_root, "", 1)
 	if e.IsDir() {
 		return !dir_registered(relative_path, sync_id)
 	} else {
 		if file_registered(relative_path, sync_id) {
 
-			f := get_file(full_path,relative_path, sync_id)
+			f := get_file(full_path, relative_path, sync_id)
 			new_info, _ := e.Info()
 
 			db_parsed_time, _ := time.Parse(time.RFC1123, f["m_date"])
@@ -335,15 +328,14 @@ func needs_update(full_path string, e os.DirEntry, sync_id string,sync_root stri
 	return false
 }
 
-
-func get_file(full_path string,relative_path string, sync_id string) map[string]string {
+func get_file(full_path string, relative_path string, sync_id string) map[string]string {
 	bytes_bdd_content, _ := os.ReadFile(sync_id + "_files.csv")
 	str_bdd_content := strings.Split(string(bytes_bdd_content), "\n")
-	
+
 	//file already being written by another process, wait a bit
-	if len(str_bdd_content) <= 1{
-		time.Sleep(1*time.Second)
-		return get_file(full_path,relative_path,sync_id)
+	if len(str_bdd_content) <= 1 {
+		time.Sleep(1 * time.Second)
+		return get_file(full_path, relative_path, sync_id)
 	}
 
 	for _, ele := range str_bdd_content {
@@ -361,14 +353,12 @@ func file_registered(relative_path string, sync_id string) bool {
 	str_bdd_content := strings.Split(string(bytes_bdd_content), "\n")
 	for _, ele := range str_bdd_content {
 
-
 		// may occur in a context of local to local sync
-		if (len(strings.Split(string(ele), ";"))> 1){
+		if len(strings.Split(string(ele), ";")) > 1 {
 			if strings.Split(string(ele), ";")[1] == relative_path {
 				return true
 			}
 		}
-
 
 	}
 	return false
@@ -381,7 +371,7 @@ func dir_registered(relative_path string, sync_id string) bool {
 	for _, ele := range str_bdd_content {
 
 		// may occur in a context of local to local sync
-		if (len(strings.Split(string(ele), ";"))> 1){
+		if len(strings.Split(string(ele), ";")) > 1 {
 
 			if strings.Split(string(ele), ";")[1] == relative_path {
 				return true
@@ -393,31 +383,28 @@ func dir_registered(relative_path string, sync_id string) bool {
 	return false
 }
 
-func map_directory(directory string, sync_id string,sync_root string) {
+func map_directory(directory string, sync_id string, sync_root string) {
 	entries, err := os.ReadDir(directory)
 
 	if err != nil {
 		// directory must have been delete, proceed to remove it from db
-		check_files_deletion(sync_root,sync_id)
+		check_files_deletion(sync_root, sync_id)
 	}
 
 	for _, e := range entries {
 		full_path := directory + "/" + e.Name()
 		if e.IsDir() {
-			register_folder(full_path, e, sync_id,sync_root)
-			map_directory(full_path, sync_id,sync_root)
+			register_folder(full_path, e, sync_id, sync_root)
+			map_directory(full_path, sync_id, sync_root)
 		} else {
-			register_file(full_path, e, sync_id,sync_root)
+			register_file(full_path, e, sync_id, sync_root)
 		}
 
 	}
 
-	
-
 }
 
-
-func check_files_deletion(sync_root string, sync_id string){
+func check_files_deletion(sync_root string, sync_id string) {
 	// now, check for files deletion
 	bytes_bdd_content, _ := os.ReadFile(sync_id + "_files.csv")
 	str_bdd_content := strings.Split(string(bytes_bdd_content), "\n")[1:]
@@ -425,11 +412,11 @@ func check_files_deletion(sync_root string, sync_id string){
 
 		// true if not found error
 		file_relative_path := strings.Split(string(ele), ";")[1]
-		if _, err := os.Stat(sync_root+file_relative_path); os.IsNotExist(err) {
+		if _, err := os.Stat(sync_root + file_relative_path); os.IsNotExist(err) {
 			delete_file_from_db(sync_id, file_relative_path)
 
 			//notify other end
-			notify_file_deletion(sync_id,get_remote_addr(sync_id),file_relative_path,sync_root)
+			notify_file_deletion(sync_id, get_remote_addr(sync_id), file_relative_path, sync_root)
 			println("[+] Updating db after file deletion : " + file_relative_path)
 
 		}
@@ -442,10 +429,10 @@ func check_files_deletion(sync_root string, sync_id string){
 
 		// true if not found error
 		folder_relative_path := strings.Split(string(ele), ";")[1]
-		if _, err := os.Stat(sync_root+folder_relative_path); os.IsNotExist(err) {
+		if _, err := os.Stat(sync_root + folder_relative_path); os.IsNotExist(err) {
 			delete_folder_from_db(sync_id, folder_relative_path)
 			//notify other end
-			notify_folder_deletion(sync_id,get_remote_addr(sync_id),folder_relative_path,sync_root)
+			notify_folder_deletion(sync_id, get_remote_addr(sync_id), folder_relative_path, sync_root)
 
 			println("[+] Updating db after folder deletion : " + folder_relative_path)
 		}
@@ -458,8 +445,8 @@ func delete_file_from_db(sync_id string, relative_path string) {
 	bdd_string_split := strings.Split(string(bdd_content), "\n")
 
 	//file is already being written
-	if len(bdd_string_split) <= 1{
-		time.Sleep(1*time.Second)
+	if len(bdd_string_split) <= 1 {
+		time.Sleep(1 * time.Second)
 		delete_file_from_db(sync_id, relative_path)
 		return
 	}
@@ -484,8 +471,8 @@ func delete_folder_from_db(sync_id string, relative_path string) {
 	bdd_string_split := strings.Split(string(bdd_content), "\n")
 
 	//file is already being written
-	if len(bdd_string_split) <= 1{
-		time.Sleep(1*time.Second)
+	if len(bdd_string_split) <= 1 {
+		time.Sleep(1 * time.Second)
 		delete_folder_from_db(sync_id, relative_path)
 		return
 	}
@@ -496,7 +483,7 @@ func delete_folder_from_db(sync_id string, relative_path string) {
 		// add all except the right line
 		if !strings.Contains(ele, relative_path) {
 			new_bdd_content = new_bdd_content + "\n" + ele
-			
+
 		}
 
 	}
@@ -505,34 +492,34 @@ func delete_folder_from_db(sync_id string, relative_path string) {
 	os.WriteFile(sync_id+"_folders.csv", []byte(new_bdd_content), os.ModeAppend)
 }
 
-func notify_folder_creation(relative_path string, ip_addr string, sync_id string,sync_root string) {
+func notify_folder_creation(relative_path string, ip_addr string, sync_id string, sync_root string) {
 
-	is_local_second_end := is_local_second_end(sync_id,sync_root)
+	is_local_second_end := is_local_second_end(sync_id, sync_root)
 
 	client := http.Client{
 		Timeout: time.Second / 10,
 	}
-	client.Get("http://" + ip_addr + "/create_folder?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id+"&is_local_second_end="+strconv.FormatBool(is_local_second_end))
+	client.Get("http://" + ip_addr + "/create_folder?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id + "&is_local_second_end=" + strconv.FormatBool(is_local_second_end))
 }
 
-func notify_folder_deletion(sync_id string, ip_addr string,relative_path string,sync_root string) {
+func notify_folder_deletion(sync_id string, ip_addr string, relative_path string, sync_root string) {
 
-	is_local_second_end := is_local_second_end(sync_id,sync_root)
+	is_local_second_end := is_local_second_end(sync_id, sync_root)
 
-	if is_sync_local(sync_id){
+	if is_sync_local(sync_id) {
 		// to notify folder creation on the other local end and not on the same
 		is_local_second_end = !is_local_second_end
 	}
 	client := http.Client{
 		Timeout: time.Second / 10,
 	}
-	client.Get("http://" + ip_addr + "/delete_folder?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id+"&is_local_second_end="+strconv.FormatBool(is_local_second_end))
+	client.Get("http://" + ip_addr + "/delete_folder?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id + "&is_local_second_end=" + strconv.FormatBool(is_local_second_end))
 }
 
-func notify_file_deletion(sync_id string, ip_addr string,relative_path string,sync_root string) {
-	is_local_second_end := is_local_second_end(sync_id,sync_root)
+func notify_file_deletion(sync_id string, ip_addr string, relative_path string, sync_root string) {
+	is_local_second_end := is_local_second_end(sync_id, sync_root)
 
-	if is_sync_local(sync_id){
+	if is_sync_local(sync_id) {
 		// to notify folder creation on the other local end and not on the same
 		is_local_second_end = !is_local_second_end
 	}
@@ -540,12 +527,12 @@ func notify_file_deletion(sync_id string, ip_addr string,relative_path string,sy
 	client := http.Client{
 		Timeout: time.Second / 10,
 	}
-	client.Get("http://" + ip_addr + "/delete_file?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id+"&is_local_second_end="+strconv.FormatBool(is_local_second_end))
+	client.Get("http://" + ip_addr + "/delete_file?relative_path=" + url.QueryEscape(relative_path) + "&sync_id=" + sync_id + "&is_local_second_end=" + strconv.FormatBool(is_local_second_end))
 }
 
 func restart_tasks() {
 	//wait http server ^to start
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 
 	db_ctt, _ := os.ReadFile("sync_db.csv")
 	db_ctt_list := strings.Split(string(db_ctt), "\n")
@@ -554,7 +541,7 @@ func restart_tasks() {
 		go sync_process(ele_split[0], ele_split[1])
 
 		//don't start all tasks at the same time so we avoid misswriting or new folder deletion
-		time.Sleep(1*time.Second)
+		time.Sleep(1 * time.Second)
 
 		println("\t[+] task root : " + ele_split[1])
 	}
@@ -562,7 +549,7 @@ func restart_tasks() {
 	println("[v] All sync tasks are now active.")
 }
 
-func update_at_creation(sync_id string, ip_addr string,sync_root string) {
+func update_at_creation(sync_id string, ip_addr string, sync_root string) {
 	db_ctt, _ := os.ReadFile("sync_db.csv")
 	db_ctt_list := strings.Split(string(db_ctt), "\n")
 	for _, ele := range db_ctt_list[1:] {
@@ -588,9 +575,7 @@ func update_at_creation(sync_id string, ip_addr string,sync_root string) {
 
 			println("\t\t[+] Downloaded other end files database")
 
-			
-			
-			if !(strings.Contains(":",ip_addr)){
+			if !(strings.Contains(":", ip_addr)) {
 				ip_addr += ":9214"
 			}
 
@@ -642,7 +627,7 @@ func update_at_creation(sync_id string, ip_addr string,sync_root string) {
 
 }
 
-func get_sync_root(sync_id string,is_local_second_end bool) string {
+func get_sync_root(sync_id string, is_local_second_end bool) string {
 	db_ctt, _ := os.ReadFile("sync_db.csv")
 	db_ctt_list := strings.Split(string(db_ctt), "\n")
 	for _, ele := range db_ctt_list[1:] {
@@ -657,8 +642,7 @@ func get_sync_root(sync_id string,is_local_second_end bool) string {
 	return ""
 }
 
-
-func is_other_end_available(sync_id string) bool{
+func is_other_end_available(sync_id string) bool {
 	client := http.Client{
 		Timeout: time.Second / 10,
 	}
@@ -675,33 +659,29 @@ func sync_process(sync_id string, directory string) {
 	for true {
 
 		// check if sync task is still valid (has not been deleted)
-		if !(is_id_valid(sync_id)){
+		if !(is_id_valid(sync_id)) {
 			return
 		}
 
-
-
-
 		// execute mapping if task is not paused
-		if !(is_task_paused(sync_id,directory)){
+		if !(is_task_paused(sync_id, directory)) {
 
-
-			if !is_other_end_available(sync_id){
-				change_task_state(sync_id,false)
+			if !is_other_end_available(sync_id) {
+				change_task_state(sync_id, false)
 			}
 
-			map_directory(directory, sync_id,directory)
-			check_files_deletion(directory,sync_id)
+			map_directory(directory, sync_id, directory)
+			check_files_deletion(directory, sync_id)
 		}
 
 		// slow down the loop and keep unsynchronised sync tasks at the same time
 		// to avoid misswrite and new folder deletion
-		time.Sleep(5*time.Second)
+		time.Sleep(5 * time.Second)
 
 	}
 }
 
-func is_task_paused(sync_id string,sync_root string) bool{
+func is_task_paused(sync_id string, sync_root string) bool {
 	bdd_content, _ := os.ReadFile("sync_db.csv")
 	bdd_content_split := strings.Split(string(bdd_content), "\n")
 
@@ -717,34 +697,31 @@ func is_task_paused(sync_id string,sync_root string) bool{
 	return false
 }
 
-func change_task_state(sync_id string,is_local_second_end bool){
+func change_task_state(sync_id string, is_local_second_end bool) {
 	bdd_content, _ := os.ReadFile("sync_db.csv")
 	bdd_content_split := strings.Split(string(bdd_content), "\n")
-
 
 	var new_bdd_content = bdd_content_split[0]
 	for _, ele := range bdd_content_split[1:] {
 		ele_split := strings.Split(ele, ";")
 		// find the right sync task
 		if (ele_split[0] == sync_id) && (ele_split[3] == strconv.FormatBool(is_local_second_end)) {
-			new_bdd_content += "\n"+ele_split[0]+";"+ele_split[1]+";"+ele_split[2]+";"+ele_split[3]+";"+strconv.FormatBool(!(ele_split[4]=="true"))
-			
-		}else{
+			new_bdd_content += "\n" + ele_split[0] + ";" + ele_split[1] + ";" + ele_split[2] + ";" + ele_split[3] + ";" + strconv.FormatBool(!(ele_split[4] == "true"))
+
+		} else {
 			// not the line we want to modify, reput it as it was
-			new_bdd_content += "\n"+ele
+			new_bdd_content += "\n" + ele
 		}
 
-		
 	}
 
-	os.WriteFile("sync_db.csv",[]byte(new_bdd_content),0644)
+	os.WriteFile("sync_db.csv", []byte(new_bdd_content), 0644)
 }
 
-func delete_sync_task(sync_id string,is_local_second_end bool){
+func delete_sync_task(sync_id string, is_local_second_end bool) {
 
 	bdd_content, _ := os.ReadFile("sync_db.csv")
 	bdd_content_split := strings.Split(string(bdd_content), "\n")
-
 
 	new_bdd_content := bdd_content_split[0]
 
@@ -752,18 +729,16 @@ func delete_sync_task(sync_id string,is_local_second_end bool){
 		ele_split := strings.Split(ele, ";")
 		// all except the right task
 		if !((ele_split[0] == sync_id) && (ele_split[3] == strconv.FormatBool(is_local_second_end))) {
-			new_bdd_content = new_bdd_content + "\n"+ele
+			new_bdd_content = new_bdd_content + "\n" + ele
 		}
 
-		
 	}
-	os.WriteFile("sync_db.csv",[]byte(new_bdd_content),0644)
+	os.WriteFile("sync_db.csv", []byte(new_bdd_content), 0644)
 
-	os.Remove(sync_id+"_files.csv")
-	os.Remove(sync_id+"_folders.csv")
+	os.Remove(sync_id + "_files.csv")
+	os.Remove(sync_id + "_folders.csv")
 
 }
-
 
 /*
 =========================================
@@ -771,12 +746,12 @@ WEB SERVER
 =========================================
 */
 
-type sync_task struct{
-	Sync_id string
-	Sync_root string
-	Remote_addr string
+type sync_task struct {
+	Sync_id             string
+	Sync_root           string
+	Remote_addr         string
 	Is_local_second_end string
-	Is_task_paused string
+	Is_task_paused      string
 }
 
 func main() {
@@ -804,25 +779,23 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 		// accept only local requests on this endpoint
-		if strings.Contains(r.RemoteAddr, ".") {
+		if strings.Contains(r.RemoteAddr, ".") && !strings.Contains(r.RemoteAddr, "localhost") && !strings.Contains(r.RemoteAddr, "127.0.0.1") {
 			w.WriteHeader(403)
-			http.Error(w,"Access forbidden to this url :/",403)
+			http.Error(w, "Access forbidden to this url for :"+r.RemoteAddr+" :/", 403)
 			return
 		}
-
 
 		t, _ := template.ParseFiles("templates/index.html")
 		db_ctt, _ := os.ReadFile("sync_db.csv")
 
 		db_ctt_list := strings.Split(string(db_ctt), "\n")
-		
+
 		var db []sync_task
 
 		for _, ele := range db_ctt_list[1:] {
 			ele_split := strings.Split(ele, ";")
-			db = append(db,sync_task{Sync_id : ele_split[0], Sync_root : ele_split[1],Remote_addr : ele_split[2], Is_local_second_end : ele_split[3], Is_task_paused : ele_split[4]})
+			db = append(db, sync_task{Sync_id: ele_split[0], Sync_root: ele_split[1], Remote_addr: ele_split[2], Is_local_second_end: ele_split[3], Is_task_paused: ele_split[4]})
 		}
-		
 
 		t.Execute(w, db)
 
@@ -831,9 +804,9 @@ func main() {
 	http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
 
 		// accept only local requests on this endpoint
-		if strings.Contains(r.RemoteAddr, ".") {
+		if strings.Contains(r.RemoteAddr, ".") && !strings.Contains(r.RemoteAddr, "localhost") && !strings.Contains(r.RemoteAddr, "127.0.0.1") {
 			w.WriteHeader(403)
-			http.Error(w,"Access forbidden to this url :/",403)
+			http.Error(w, "Access forbidden to this url :/", 403)
 			return
 		}
 
@@ -850,13 +823,12 @@ func main() {
 			init_db(sync_root, sync_id, remote_addr)
 		}
 
-
-		if !(strings.Contains(remote_addr,":")){
+		if !(strings.Contains(remote_addr, ":")) {
 			remote_addr += ":9214"
 		}
 
 		// init sync database for this task and download files from the other end
-		update_at_creation(sync_id, remote_addr,sync_root)
+		update_at_creation(sync_id, remote_addr, sync_root)
 
 		// start goroutine
 		go sync_process(sync_id, sync_root)
@@ -874,7 +846,7 @@ func main() {
 			http.Error(w, "Invalid sync_id", 404)
 		}
 
-		if !strings.Contains(full_path, get_sync_root(sync_id,is_local_second_end(sync_id,full_path))) {
+		if !strings.Contains(full_path, get_sync_root(sync_id, is_local_second_end(sync_id, full_path))) {
 			http.Error(w, "Invalid path", 404)
 		}
 
@@ -907,9 +879,9 @@ func main() {
 
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
-		full_path := get_sync_root(sync_id,is_local_second_end) + r.URL.Query().Get("relative_path")
+		full_path := get_sync_root(sync_id, is_local_second_end) + r.URL.Query().Get("relative_path")
 
-		println("[+] Downloading file upload : "+full_path+"\n\trelative path : "+r.URL.Query().Get("relative_path"))
+		println("[+] Downloading file upload : " + full_path + "\n\trelative path : " + r.URL.Query().Get("relative_path"))
 
 		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
 		if err != nil {
@@ -943,10 +915,9 @@ func main() {
 			ip_addr = r.RemoteAddr
 		}
 
-		if !(strings.Contains(":",ip_addr)){
+		if !(strings.Contains(":", ip_addr)) {
 			ip_addr += ":9214"
 		}
-
 
 		client := http.Client{
 			Timeout: time.Second / 10,
@@ -965,64 +936,62 @@ func main() {
 	})
 
 	//this endpoint will trigger a folder creation on this machine
-	http.HandleFunc("/create_folder", func(w http.ResponseWriter, r *http.Request) {		
+	http.HandleFunc("/create_folder", func(w http.ResponseWriter, r *http.Request) {
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
-		full_path := get_sync_root(sync_id,is_local_second_end) + r.URL.Query().Get("relative_path")
+		full_path := get_sync_root(sync_id, is_local_second_end) + r.URL.Query().Get("relative_path")
 		os.Mkdir(full_path, os.ModeDir)
 
-
-		Println("Updating folders database with : " + full_path+"\n\trelative path : "+r.URL.Query().Get("relative_path"))
+		Println("Updating folders database with : " + full_path + "\n\trelative path : " + r.URL.Query().Get("relative_path"))
 		//update database
 		bdd_content, _ := os.ReadFile(sync_id + "_folders.csv")
 		os.WriteFile(sync_id+"_folders.csv", []byte(string(bdd_content)+"\n0;"+r.URL.Query().Get("relative_path")), os.ModeAppend)
 
 	})
 	//this endpoint will trigger a folder deletion on this machine
-	http.HandleFunc("/delete_folder", func(w http.ResponseWriter, r *http.Request) {		
+	http.HandleFunc("/delete_folder", func(w http.ResponseWriter, r *http.Request) {
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 
-		full_path := get_sync_root(sync_id,is_local_second_end) + r.URL.Query().Get("relative_path")
+		full_path := get_sync_root(sync_id, is_local_second_end) + r.URL.Query().Get("relative_path")
 
-		Println("[+] Deleting folder in database : " + full_path + "\n\trelative_path : "+r.URL.Query().Get("relative_path"))
+		Println("[+] Deleting folder in database : " + full_path + "\n\trelative_path : " + r.URL.Query().Get("relative_path"))
 		//update database
-		delete_folder_from_db(sync_id,r.URL.Query().Get("relative_path"))
+		delete_folder_from_db(sync_id, r.URL.Query().Get("relative_path"))
 		os.RemoveAll(full_path)
 
 	})
 
 	//this endpoint will trigger a folder deletion on this machine
-	http.HandleFunc("/delete_file", func(w http.ResponseWriter, r *http.Request) {		
+	http.HandleFunc("/delete_file", func(w http.ResponseWriter, r *http.Request) {
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
-		full_path := get_sync_root(sync_id,is_local_second_end) + r.URL.Query().Get("relative_path")
+		full_path := get_sync_root(sync_id, is_local_second_end) + r.URL.Query().Get("relative_path")
 
 		Println("[+] Deleting file in database : " + full_path)
 		//update database
-		delete_file_from_db(sync_id,r.URL.Query().Get("relative_path"))
+		delete_file_from_db(sync_id, r.URL.Query().Get("relative_path"))
 		os.Remove(full_path)
 
 	})
 
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 
-
 		// accept only local requests on this endpoint
-		if strings.Contains(r.RemoteAddr, ".") {
+		if strings.Contains(r.RemoteAddr, ".") && !strings.Contains(r.RemoteAddr, "localhost") && !strings.Contains(r.RemoteAddr, "127.0.0.1") {
 			w.WriteHeader(403)
-			http.Error(w,"Access forbidden to this url :/",403)
+			http.Error(w, "Access forbidden to this url :/", 403)
 			return
 		}
 
 		full_path := r.URL.Query().Get("full_path")
 		remote_addr := r.URL.Query().Get("remote_addr")
 
-		if (full_path == "") || (remote_addr == ""){
-			http.Error(w,"Empty form arguments, <a href='/'>Home</a>",404)
+		if (full_path == "") || (remote_addr == "") {
+			http.Error(w, "Empty form arguments, <a href='/'>Home</a>", 404)
 		}
 
-		if !(strings.Contains(remote_addr,":")){
+		if !(strings.Contains(remote_addr, ":")) {
 			remote_addr += ":9214"
 		}
 
@@ -1037,38 +1006,35 @@ func main() {
 
 	})
 
-
 	http.HandleFunc("/change_task_state", func(w http.ResponseWriter, r *http.Request) {
 		sync_id := r.URL.Query().Get("sync_id")
-		is_local_second_end := (r.URL.Query().Get("is_local_second_end")== "true")
+		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 
-		if is_sync_local(sync_id){
+		if is_sync_local(sync_id) {
 			println("[+] Changing sync task state of local second end")
-			change_task_state(sync_id,!is_local_second_end)
+			change_task_state(sync_id, !is_local_second_end)
 		}
 		println("[+] Changing sync task state")
-		change_task_state(sync_id,is_local_second_end)
+		change_task_state(sync_id, is_local_second_end)
 
 	})
 
-
-	http.HandleFunc("/delete_sync_task", func(w http.ResponseWriter, r *http.Request){
+	http.HandleFunc("/delete_sync_task", func(w http.ResponseWriter, r *http.Request) {
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 
 		//wait that sync tasks are paused
 		println("[+] Waiting end of current loop...")
-		time.Sleep(5*time.Second)
+		time.Sleep(5 * time.Second)
 
 		// delete them
-		if is_sync_local(sync_id){
+		if is_sync_local(sync_id) {
 			println("[+] Deleting local sync task second end")
-			delete_sync_task(sync_id,!is_local_second_end)
+			delete_sync_task(sync_id, !is_local_second_end)
 		}
 		println("[+] Deleting sync task")
-		delete_sync_task(sync_id,is_local_second_end)
+		delete_sync_task(sync_id, is_local_second_end)
 	})
-
 
 	println("[+] Restarting all tasks...")
 
