@@ -42,6 +42,7 @@ func sendPostRequest(url string, full_path string, sync_id string) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	fw, err := writer.CreateFormFile("file", filepath.Base(full_path))
+
 	if err != nil {
 		println("Error while sending file : " + filepath.Base(full_path) + " : " + string(err.Error()))
 	}
@@ -654,6 +655,7 @@ func is_other_end_available(sync_id string) bool {
 /*
 Sync process is the function started as a coroutine that will loop map_directory() indefinitely
 */
+
 func sync_process(sync_id string, directory string) {
 
 	for true {
@@ -663,8 +665,18 @@ func sync_process(sync_id string, directory string) {
 			return
 		}
 
+		paused := is_task_paused(sync_id, directory)
+
+		// check if deirectory still exists (or someone changed the config file and misspelled)
+		if _, err := os.Stat(directory); os.IsNotExist(err) && !paused {
+			change_task_state(sync_id, is_local_second_end(sync_id, directory))
+			//skip iteration
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
 		// execute mapping if task is not paused
-		if !(is_task_paused(sync_id, directory)) {
+		if !(paused) {
 
 			if !is_other_end_available(sync_id) {
 				change_task_state(sync_id, false)
@@ -780,8 +792,7 @@ func main() {
 
 		// accept only local requests on this endpoint
 		if strings.Contains(r.RemoteAddr, ".") && !strings.Contains(r.RemoteAddr, "localhost") && !strings.Contains(r.RemoteAddr, "127.0.0.1") {
-			w.WriteHeader(403)
-			http.Error(w, "Access forbidden to this url for :"+r.RemoteAddr+" :/", 403)
+			http.Error(w, "Access forbidden to this url for : "+r.RemoteAddr+" :/", http.StatusForbidden)
 			return
 		}
 
@@ -805,8 +816,7 @@ func main() {
 
 		// accept only local requests on this endpoint
 		if strings.Contains(r.RemoteAddr, ".") && !strings.Contains(r.RemoteAddr, "localhost") && !strings.Contains(r.RemoteAddr, "127.0.0.1") {
-			w.WriteHeader(403)
-			http.Error(w, "Access forbidden to this url :/", 403)
+			http.Error(w, "Access forbidden to this url for : "+r.RemoteAddr+" :/", http.StatusForbidden)
 			return
 		}
 
@@ -814,6 +824,11 @@ func main() {
 		sync_root := r.URL.Query().Get("sync_root")
 
 		remote_addr := r.URL.Query().Get("remote_addr")
+
+		if _, err := os.Stat(sync_root); os.IsNotExist(err) {
+			http.Error(w, "<html>Invalid folder path (does not exists), <a href='/'>Home</a></html>", http.StatusBadRequest)
+			return
+		}
 
 		if (remote_addr == "localhost") || (remote_addr == "127.0.0.1") {
 			//adding sync_id into the database
@@ -843,11 +858,13 @@ func main() {
 		full_path := r.URL.Query().Get("full_path")
 
 		if !is_id_valid(sync_id) {
-			http.Error(w, "Invalid sync_id", 404)
+			http.Error(w, "Invalid sync_id", http.StatusBadRequest)
+			return
 		}
 
 		if !strings.Contains(full_path, get_sync_root(sync_id, is_local_second_end(sync_id, full_path))) {
-			http.Error(w, "Invalid path", 404)
+			http.Error(w, "Invalid path", http.StatusBadRequest)
+			return
 		}
 
 		http.ServeFile(w, r, full_path)
@@ -859,7 +876,8 @@ func main() {
 
 		sync_id := r.URL.Query().Get("sync_id")
 		if !is_id_valid(sync_id) {
-			http.Error(w, "Invalid sync_id", 404)
+			http.Error(w, "Invalid sync_id", http.StatusBadRequest)
+			return
 		}
 		db_content, _ := os.ReadFile(sync_id + "_files.csv")
 		Fprintf(w, string(db_content))
@@ -868,7 +886,8 @@ func main() {
 	http.HandleFunc("/sync_db/folders", func(w http.ResponseWriter, r *http.Request) {
 		sync_id := r.URL.Query().Get("sync_id")
 		if !is_id_valid(sync_id) {
-			http.Error(w, "Invalid sync_id", 404)
+			http.Error(w, "Invalid sync_id", http.StatusBadRequest)
+			return
 		}
 		db_content, _ := os.ReadFile(sync_id + "_folders.csv")
 		Fprintf(w, string(db_content))
@@ -979,16 +998,21 @@ func main() {
 
 		// accept only local requests on this endpoint
 		if strings.Contains(r.RemoteAddr, ".") && !strings.Contains(r.RemoteAddr, "localhost") && !strings.Contains(r.RemoteAddr, "127.0.0.1") {
-			w.WriteHeader(403)
-			http.Error(w, "Access forbidden to this url :/", 403)
+			http.Error(w, "Access forbidden to this url for : "+r.RemoteAddr+" :/", http.StatusForbidden)
 			return
 		}
 
-		full_path := r.URL.Query().Get("full_path")
+		sync_root := r.URL.Query().Get("sync_root")
 		remote_addr := r.URL.Query().Get("remote_addr")
 
-		if (full_path == "") || (remote_addr == "") {
-			http.Error(w, "Empty form arguments, <a href='/'>Home</a>", 404)
+		if (sync_root == "") || (remote_addr == "") {
+			http.Error(w, "<html>Empty form arguments, <a href='/'>Home</a></html>", http.StatusBadRequest)
+			return
+		}
+
+		if _, err := os.Stat(sync_root); os.IsNotExist(err) {
+			http.Error(w, "<html>Invalid folder path (does not exists), <a href='/'>Home</a></html>", http.StatusBadRequest)
+			return
 		}
 
 		if !(strings.Contains(remote_addr, ":")) {
@@ -997,12 +1021,12 @@ func main() {
 
 		// init sync database for this task
 		sync_id := gen_sync_id()
-		init_db(full_path, sync_id, remote_addr)
+		init_db(sync_root, sync_id, remote_addr)
 
 		// start goroutine
-		go sync_process(sync_id, full_path)
+		go sync_process(sync_id, sync_root)
 
-		http.Redirect(w, r, "/", 200)
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 
 	})
 
