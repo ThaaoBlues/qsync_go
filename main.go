@@ -4,9 +4,9 @@ import (
 	"bytes"
 	. "fmt"
 	"io"
-	"log"
 	"math/rand"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -45,24 +45,35 @@ func sendPostRequest(url string, full_path string, sync_id string) {
 
 	if err != nil {
 		println("Error while sending file : " + filepath.Base(full_path) + " : " + string(err.Error()))
+		return
 	}
+
 	file, err := os.Open(full_path)
 	if err != nil {
 		println("Error while sending file : " + string(err.Error()))
+		return
 	}
 	_, err = io.Copy(fw, file)
 	if err != nil {
 		println("Error while sending file : " + string(err.Error()))
+		return
 	}
 	writer.Close()
 	req, err := http.NewRequest("POST", url, bytes.NewReader(body.Bytes()))
 	if err != nil {
 		println("Error while sending file : " + string(err.Error()))
+		return
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	rsp, _ := client.Do(req)
+	rsp, err := client.Do(req)
+
+	if err != nil {
+		println("Error while sending file : " + string(err.Error()))
+		return
+	}
+
 	if rsp.StatusCode != http.StatusOK {
-		log.Printf("Request failed with response code: %d "+filepath.Base(full_path), rsp.StatusCode)
+		Println("Request failed with response code: %d "+filepath.Base(full_path), rsp.StatusCode)
 	}
 
 	file.Close()
@@ -812,6 +823,19 @@ func main() {
 
 	})
 
+	http.HandleFunc("/utils/get_private_ip", func(w http.ResponseWriter, r *http.Request) {
+
+		conn, err := net.Dial("udp", "8.8.8.8:80")
+		if err != nil {
+			http.Error(w, "No internet connection or qsync uses it to make a connection with 8.8.8.8 dns server in order to get local address (less errors than non-internet methods).", http.StatusInternalServerError)
+		}
+		defer conn.Close()
+
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		w.Write([]byte(localAddr.IP.String()))
+
+	})
+
 	http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
 
 		// accept only local requests on this endpoint
@@ -911,17 +935,21 @@ func main() {
 		file, _, err := r.FormFile("file")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			Println("[!] Error while downloading file : " + err.Error())
+
 			return
 		}
 		tmpfile, err := os.Create(full_path)
 		defer tmpfile.Close()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			Println("[!] Error while downloading file : " + err.Error())
 			return
 		}
 		_, err = io.Copy(tmpfile, file)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			Println("[!] Error while downloading file : " + err.Error())
 			return
 		}
 
@@ -1030,7 +1058,7 @@ func main() {
 
 	})
 
-	http.HandleFunc("/change_task_state", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/utils/change_task_state", func(w http.ResponseWriter, r *http.Request) {
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 
@@ -1043,7 +1071,7 @@ func main() {
 
 	})
 
-	http.HandleFunc("/delete_sync_task", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/utils/delete_sync_task", func(w http.ResponseWriter, r *http.Request) {
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 

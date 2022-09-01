@@ -7,6 +7,9 @@
     <title>Document</title>
 </head>
 <body>
+
+    <h2 id="pv_ip">Your private IP :&nbsp;</h2>
+
     <h2>Register a new sync task :</h2>
 
     <form action="/register">
@@ -63,18 +66,18 @@
         function change_task_state(sync_id,is_local_second_end,remote_addr,is_from_delete){
 
             x = new XMLHttpRequest();
-            if(remote_addr == "localhost"){
-                x.open("GET","http://localhost/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+            if(remote_addr == "localhost:9214"){
+                x.open("GET","http://localhost:9214/utils/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end,true);
                 x.send();
             }else{
-                x.open("GET","http://localhost/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+                x.open("GET","http://localhost:9214/utils/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end,true);
                 x.send();
-                x.open("GET","http://"+remote_addr+"/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+                x.open("GET","http://"+remote_addr+"/utils/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end,true);
                 x.send();
             }
 
             if(!is_from_delete){
-                setTimeout(reload,1000);
+                //setTimeout(reload,1000);
             }
             
         }
@@ -89,13 +92,13 @@
             
             // now delete database files
             x = new XMLHttpRequest();
-            if(remote_addr == "localhost"){
-                x.open("GET","http://localhost/delete_sync_task?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+            if(remote_addr == "localhost:9214"){
+                x.open("GET","http://localhost:9214/utils/delete_sync_task?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end,true);
                 x.send();
             }else{
-                x.open("GET","http://localhost/delete_sync_task?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+                x.open("GET","http://localhost:9214/utils/delete_sync_task?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end,true);
                 x.send();
-                x.open("GET","http://"+remote_addr+"/delete_sync_task?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end);
+                x.open("GET","http://"+remote_addr+"/delete_sync_task?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end,true);
                 x.send();
             }
 
@@ -107,6 +110,24 @@
         function reload(){
             document.location.reload(true);
         }
+
+        function get_pv_ip(){
+            x = new XMLHttpRequest();
+            x.open("GET","http://localhost:9214/utils/get_private_ip",true);
+            
+            x.onreadystatechange = function() {
+                if (x.readyState === 4) {
+                    private_ip = x.response;
+                    document.getElementById("pv_ip").innerText += private_ip;
+                }
+            }
+            
+            x.send()
+        }
+
+
+
+        get_pv_ip();
     </script>
 
     <style>
