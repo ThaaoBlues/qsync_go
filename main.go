@@ -926,7 +926,7 @@ func main() {
 
 		println("[+] Downloading file upload : " + full_path + "\n\trelative path : " + r.URL.Query().Get("relative_path"))
 
-		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
+		err := r.ParseMultipartForm(10000 << 20) // maxMemory 10GB
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -959,7 +959,7 @@ func main() {
 		if !strings.Contains(r.RemoteAddr, ".") {
 			ip_addr = "localhost"
 		} else {
-			ip_addr = r.RemoteAddr
+			ip_addr = strings.Split(r.RemoteAddr, ":")[0]
 		}
 
 		if !(strings.Contains(":", ip_addr)) {
