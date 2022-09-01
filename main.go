@@ -1059,6 +1059,9 @@ func main() {
 	})
 
 	http.HandleFunc("/utils/change_task_state", func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
 		sync_id := r.URL.Query().Get("sync_id")
 		is_local_second_end := (r.URL.Query().Get("is_local_second_end") == "true")
 
