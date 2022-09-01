@@ -71,7 +71,7 @@
                 x.send();
             }else{
                 x.open("GET","http://localhost:9214/utils/change_task_state?sync_id="+sync_id+"&is_local_second_end="+is_local_second_end,true);
-                
+                x.send()
             }
 
             if(!is_from_delete){
