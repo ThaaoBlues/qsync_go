@@ -51,17 +51,20 @@ func sendPostRequest(url string, full_path string, sync_id string) {
 	file, err := os.Open(full_path)
 	if err != nil {
 		println("Error while sending file : " + string(err.Error()))
+		file.Close()
 		return
 	}
 	_, err = io.Copy(fw, file)
 	if err != nil {
 		println("Error while sending file : " + string(err.Error()))
+		file.Close()
 		return
 	}
 	writer.Close()
 	req, err := http.NewRequest("POST", url, bytes.NewReader(body.Bytes()))
 	if err != nil {
 		println("Error while sending file : " + string(err.Error()))
+		file.Close()
 		return
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -69,6 +72,7 @@ func sendPostRequest(url string, full_path string, sync_id string) {
 
 	if err != nil {
 		println("Error while sending file : " + string(err.Error()))
+		file.Close()
 		return
 	}
 
